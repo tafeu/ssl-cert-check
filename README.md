@@ -22,6 +22,7 @@ Usage: ./ssl-cert-check [ -e email address ] [ -E sender email address ] [ -x da
   -N                : Run as a Nagios plugin and output one line summary (implies -n, requires -f or -d)
   -p port           : Port to connect to (interactive mode)
   -s commmon name   : Server to connect to (interactive mode)
+  -I ip addr        : if set connect to this server instead of the common name one (interactive mode)
   -t type           : Specify the certificate type
   -q                : Don't print anything on the console
   -v                : Specify a specific protocol version to use (tls, ssl2, ssl3)

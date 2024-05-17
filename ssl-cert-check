@@ -633,6 +633,7 @@ usage()
     echo "  -p port           : Port to connect to (interactive mode)"
     echo "  -q                : Don't print anything on the console"
     echo "  -s commmon name   : Server to connect to (interactive mode)"
+    echo "  -I ip addr        : if set connect to this server instead of the common name one (interactive mode)"
     echo "  -S                : Print validation information"
     echo "  -t type           : Specify the certificate type"
     echo "  -V                : Print version information"
@@ -647,6 +648,7 @@ usage()
 # Arguments:
 #   $1 -> Server name
 #   $2 -> TCP port to connect to
+#   $3 -> optional IP to connect to
 ##########################################################################
 check_server_status() {
 
@@ -668,10 +670,15 @@ check_server_status() {
         *)                      TLSFLAG="";;
     esac
 
+    ADDR="$3"
+    if [ -z "$ADDR" ]; then
+	ADDR=${1}
+    fi
+
     if [ "${TLSSERVERNAME}" = "FALSE" ]; then
-        OPTIONS="-connect ${1}:${2} $TLSFLAG"
+        OPTIONS="-connect ${ADDR}:${2} $TLSFLAG"
     else
-        OPTIONS="-connect ${1}:${2} -servername ${1} $TLSFLAG"
+        OPTIONS="-connect ${ADDR}:${2} -servername ${1} $TLSFLAG"
     fi
 
     echo "" | "${OPENSSL}" s_client $OPTIONS 2> "${ERROR_TMP}" 1> "${CERT_TMP}"
@@ -804,7 +811,7 @@ check_file_status() {
 #################################
 ### Start of main program
 #################################
-while getopts abc:d:e:E:f:hik:nNp:qs:St:Vx: option
+while getopts abc:d:e:E:f:hik:nNp:qs:I:St:Vx: option
 do
     case "${option}" in
         a) ALARM="TRUE";;
@@ -824,6 +831,7 @@ do
         p) PORT=$OPTARG;;
         q) QUIET="TRUE";;
         s) HOST=$OPTARG;;
+        I) IPADDR=$OPTARG;;
         S) VALIDATION="TRUE";;
         t) CERTTYPE=$OPTARG;;
         V) echo "${PROGRAMVERSION}"
@@ -906,7 +914,7 @@ fi
 ### If a HOST was passed on the cmdline, use that value
 if [ "${HOST}" != "" ]; then
     print_heading
-    check_server_status "${HOST}" "${PORT:=443}"
+    check_server_status "${HOST}" "${PORT:=443}" "${IPADDR}"
     print_summary
 ### If a file is passed to the "-f" option on the command line, check
 ### each certificate or server / port combination in the file to see if
@@ -917,13 +925,15 @@ elif [ -f "${SERVERFILE}" ]; then
     IFS=$'\n'
     for LINE in $(grep -E -v '(^#|^$)' "${SERVERFILE}")
     do
-        HOST=${LINE%% *}
-        PORT=${LINE##* }
         IFS=" "
+	arrLINE=($LINE)
+	HOST=${arrLINE[0]}
+	PORT=${arrLINE[1]}
+	IPADDR=${arrLINE[2]}
         if [ "$PORT" = "FILE" ]; then
             check_file_status "${HOST}" "FILE" "${HOST}"
         else
-            check_server_status "${HOST}" "${PORT}"
+            check_server_status "${HOST}" "${PORT}" "${IPADDR}"
         fi
     done
     IFS="${OLDIFS}"
